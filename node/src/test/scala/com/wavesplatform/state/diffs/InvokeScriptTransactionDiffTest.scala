@@ -31,7 +31,7 @@ import com.wavesplatform.transaction.smart.InvokeScriptTransaction.Payment
 import com.wavesplatform.transaction.smart.script.trace.{AssetVerifierTrace, InvokeScriptTrace}
 import com.wavesplatform.transaction.smart.{InvokeScriptTransaction, SetScriptTransaction, WavesEnvironment}
 import com.wavesplatform.transaction.transfer.TransferTransactionV2
-import com.wavesplatform.transaction.{Asset, CreateAliasTransaction, GenesisTransaction, Proofs, Transaction}
+import com.wavesplatform.transaction.{Asset => _, _}
 import com.wavesplatform.utils.EmptyBlockchain
 import com.wavesplatform.{NoShrink, TransactionGen, WithDB}
 import monix.eval.Coeval
@@ -548,7 +548,7 @@ class InvokeScriptTransactionDiffTest extends PropSpec with PropertyChecks with 
       case (acc, amount, genesis, setScript, ci) =>
         assertDiffAndState(Seq(TestBlock.create(genesis ++ Seq(setScript))), TestBlock.create(Seq(ci)), fs) {
           case (blockDiff, newState) =>
-            newState.addressTransactions(acc.toAddress, Set.empty, None).toList.head._2 shouldBe ci
+            newState.addressTransactionsIterator(acc.toAddress, Set.empty, None).toList.head._2 shouldBe ci
         }
     }
   }
