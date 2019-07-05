@@ -5,8 +5,8 @@ import com.wavesplatform.account.{Address, AddressOrAlias, Alias}
 import com.wavesplatform.block.Block
 import com.wavesplatform.block.Block.BlockId
 import com.wavesplatform.common.state.ByteStr
-import com.wavesplatform.lang.ValidationError
 import com.wavesplatform.consensus.GeneratingBalanceProvider
+import com.wavesplatform.lang.ValidationError
 import com.wavesplatform.transaction.Asset.IssuedAsset
 import com.wavesplatform.transaction.TxValidationError.{AliasDoesNotExist, GenericError}
 import com.wavesplatform.transaction._
@@ -52,8 +52,8 @@ package object state {
 
     d.fold(b.nftList(address, after)) { d =>
       after match {
-        case None                                         => nftFromDiff(d, after) ++ b.nftList(address, after)
-        case Some(asset) if d.issuedAssets contains asset => nftFromDiff(d, after) ++ b.nftList(address, None)
+        case None                                         => CloseableIterator.seq(nftFromDiff(d, after), b.nftList(address, after))
+        case Some(asset) if d.issuedAssets contains asset => CloseableIterator.seq(nftFromDiff(d, after), b.nftList(address, None))
         case _                                            => b.nftList(address, after)
       }
     }
