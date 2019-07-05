@@ -632,7 +632,7 @@ class BlockchainUpdaterImpl(blockchain: LevelDBWriter, spendableBalanceChanged: 
         .map(id => ng.bestLiquidDiff.transactions(id)._2)
         .collect { case lt: LeaseTransaction if pf.isDefinedAt(lt) => pf(lt) }
 
-      val fromInner = blockchain.collectActiveLeases { case lt if canceled.keySet.contains(lt.id()) && pf.isDefinedAt(lt) => pf(lt) }
+      val fromInner = blockchain.collectActiveLeases { case lt if !canceled.keySet.contains(lt.id()) && pf.isDefinedAt(lt) => pf(lt) }
       fromDiff.toVector ++ fromInner
     }
   }
