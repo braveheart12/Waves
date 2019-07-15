@@ -8,7 +8,7 @@ import com.wavesplatform.account.{Address, Alias}
 import com.wavesplatform.block.Block.BlockId
 import com.wavesplatform.block.{Block, BlockHeader, MicroBlock}
 import com.wavesplatform.common.state.ByteStr
-import com.wavesplatform.database.LevelDBWriter
+import com.wavesplatform.database.{AddressTransactionsProvider, LevelDBWriter}
 import com.wavesplatform.features.BlockchainFeatures
 import com.wavesplatform.features.FeatureProvider._
 import com.wavesplatform.lang.ValidationError
@@ -28,7 +28,10 @@ import kamon.Kamon
 import monix.reactive.subjects.ConcurrentSubject
 import monix.reactive.{Observable, Observer}
 
-class BlockchainUpdaterImpl(blockchain: LevelDBWriter, spendableBalanceChanged: Observer[(Address, Asset)], wavesSettings: WavesSettings, time: Time)
+class BlockchainUpdaterImpl(private val blockchain: LevelDBWriter,
+                            spendableBalanceChanged: Observer[(Address, Asset)],
+                            wavesSettings: WavesSettings,
+                            time: Time)
     extends BlockchainUpdater
     with NG
     with ScorexLogging {
@@ -56,6 +59,8 @@ class BlockchainUpdaterImpl(blockchain: LevelDBWriter, spendableBalanceChanged: 
 
   private val service               = monix.execution.Scheduler.singleThread("last-block-info-publisher")
   private val internalLastBlockInfo = ConcurrentSubject.publish[LastBlockInfo](service)
+
+  private[wavesplatform] def ngStateValue: Option[NgState] = ngState
 
   override val settings: BlockchainSettings = wavesSettings.blockchainSettings
 
@@ -477,13 +482,6 @@ class BlockchainUpdaterImpl(blockchain: LevelDBWriter, spendableBalanceChanged: 
       nftListFromDiff(blockchain, ngState.map(_.bestLiquidDiff))(address, from)
     }
 
-  override def addressTransactionsIterator(address: Address,
-                                   types: Set[TransactionParser],
-                                   fromId: Option[ByteStr]): CloseableIterator[(Height, Transaction)] =
-    readLock {
-      addressTransactionsFromDiff(blockchain, ngState.map(_.bestLiquidDiff))(address, types, fromId)
-    }
-
   override def containsTransaction(tx: Transaction): Boolean = readLock {
     ngState.fold(blockchain.containsTransaction(tx)) { ng =>
       ng.bestLiquidDiff.transactions.contains(tx.id()) || blockchain.containsTransaction(tx)
@@ -709,4 +707,7 @@ object BlockchainUpdaterImpl extends ScorexLogging {
       b1.consensusData.baseTarget == b2.consensusData.baseTarget &&
       b1.reference == b2.reference &&
       b1.timestamp == b2.timestamp
+
+  implicit def toAddressTransactionsProvider(bu: BlockchainUpdaterImpl): AddressTransactionsProvider =
+    new BlockchainUpdaterImplAddressTransactionsProvider(bu.blockchain, () => bu.readLock(bu.ngStateValue.map(_.bestLiquidDiff)))
 }
