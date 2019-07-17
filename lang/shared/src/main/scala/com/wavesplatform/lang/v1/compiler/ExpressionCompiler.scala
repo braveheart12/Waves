@@ -11,6 +11,7 @@ import com.wavesplatform.lang.v1.compiler.Types.{FINAL, _}
 import com.wavesplatform.lang.v1.evaluator.ctx._
 import com.wavesplatform.lang.v1.evaluator.ctx.impl.PureContext
 import com.wavesplatform.lang.v1.parser.BinaryOperation._
+import com.wavesplatform.lang.v1.parser.Expressions.PART.VALID
 import com.wavesplatform.lang.v1.parser.Expressions.{BINARY_OP, MATCH_CASE, PART, Pos}
 import com.wavesplatform.lang.v1.parser.{BinaryOperation, Expressions, Parser}
 import com.wavesplatform.lang.v1.task.imports._
@@ -211,26 +212,19 @@ object ExpressionCompiler {
   def updateCtx(funcName: String, typeSig: FunctionTypeSignature): CompileM[Unit] =
     modify[CompilerContext, CompilationError](functions.modify(_)(_ + (funcName -> List(typeSig))))
 
-  private def compileLetBlock(p: Pos, let: Expressions.LET, body: Expressions.EXPR): CompileM[(Terms.EXPR, FINAL)] = {
+  private def compileLetBlock(p: Pos, let: Expressions.LET, body: Expressions.EXPR): CompileM[(Terms.EXPR, FINAL)] =
     for {
-      compiledLet <- compileLet(p, let)
-      (letName, letType, letExpr) = compiledLet
-      compiledBody <- local {
-        updateCtx(letName, letType, p)
-          .flatMap(_ => compileExpr(body))
-      }
-    } yield (LET_BLOCK(LET(letName, letExpr), compiledBody._1), compiledBody._2)
-  }
+      (name, tpe, expr) <- compileLet(p, let)
+      _                 <- updateCtx(name, tpe, p)
+      compiledBody      <- compileExpr(body)
+    } yield (LET_BLOCK(LET(name, expr), compiledBody._1), compiledBody._2)
 
   private def compileFuncBlock(p: Pos, func: Expressions.FUNC, body: Expressions.EXPR): CompileM[(Terms.EXPR, FINAL)] = {
     for {
-      f <- compileFunc(p, func)
-      (func, compiledFuncBodyType, argTypes) = f
-      typeSig                                = FunctionTypeSignature(compiledFuncBodyType, argTypes, FunctionHeader.User(func.name))
-      compiledBody <- local {
-        updateCtx(func.name, typeSig)
-          .flatMap(_ => compileExpr(body))
-      }
+      (func, resultType, argTypes) <- compileFunc(p, func)
+      typeSig = FunctionTypeSignature(resultType, argTypes, FunctionHeader.User(func.name))
+      _ <- updateCtx(func.name, typeSig)
+      compiledBody <- compileExpr(body)
     } yield (BLOCK(func, compiledBody._1), compiledBody._2)
   }
 
@@ -248,7 +242,7 @@ object ExpressionCompiler {
       ctx          <- get[CompilerContext, CompilationError]
       name         <- handlePart(namePart)
       signatures   <- get[CompilerContext, CompilationError].map(_.functionTypeSignaturesByName(name))
-      compiledArgs <- args.traverse(compileExpr)
+      compiledArgs <- args.traverse(a => local(compileExpr(a)))
       result <- (signatures match {
         case Nil           => FunctionNotFound(p.start, p.end, name, compiledArgs.map(_._2.toString)).asLeft[(EXPR, FINAL)]
         case single :: Nil => matchFuncOverload(p, name, args, compiledArgs, ctx.predefTypes, single)
@@ -378,10 +372,17 @@ object ExpressionCompiler {
     case PART.VALID(_, x)         => x.pure[CompileM]
     case PART.INVALID(p, message) => raiseError(Generic(p.start, p.end, message))
   }
+
   def apply(c: CompilerContext, expr: Expressions.EXPR): Either[String, (EXPR, FINAL)] = {
     compileExpr(expr)
       .run(c)
       .map(_._2.leftMap(e => s"Compilation failed: ${Show[CompilationError].show(e)}"))
       .value
   }
+
+  def applyWithContext(c: CompilerContext, expr: Expressions.EXPR): (CompilerContext, Either[String, (EXPR, FINAL)]) =
+    compileExpr(expr)
+      .run(c)
+      .map(_.map(_.leftMap(e => s"Compilation failed: ${Show[CompilationError].show(e)}")))
+      .value
 }

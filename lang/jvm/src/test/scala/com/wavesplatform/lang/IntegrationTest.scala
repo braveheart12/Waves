@@ -340,7 +340,8 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
     ev[CONST_LONG](context, expr) shouldBe evaluated(2003l)
   }
 
-  property("context won't change after execution of an inner block") {
+  // unreachable case
+  ignore("context won't change after execution of an inner block") {
     val context = Monoid.combine(
       PureContext.build(Global, V1).evaluationContext,
       EvaluationContext(
@@ -361,6 +362,23 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
       )
     )
     ev[CONST_LONG](context, expr) shouldBe evaluated(8)
+  }
+
+  ignore("context won't change after execution of an inner block (2)") {
+    val context = Monoid.combine(
+      PureContext.build(Global, V1),
+      CTX(
+        types = Seq(),
+        vars = Map(("x", ((LONG, "x"), LazyVal(EitherT.pure(CONST_LONG(3)))))),
+        functions = Array()
+      )
+    )
+
+    val script = " { let x = 5; x } + x "
+    val parsed = Parser.parseExpr(script).get.value
+    val compiled = ExpressionCompiler(context.compilerContext, parsed).explicitGet()._1
+    val eval = ev[CONST_LONG](context.evaluationContext, compiled)
+    eval shouldBe evaluated(8)
   }
 
   property("listN constructor primitive") {

@@ -1,7 +1,6 @@
 import cats.kernel.Monoid
-import com.wavesplatform.lang.Version
+import com.wavesplatform.lang.{Global, Repl, Version}
 import com.wavesplatform.common.utils.EitherExt2
-import com.wavesplatform.lang.Global
 import com.wavesplatform.lang.contract.DApp
 import com.wavesplatform.lang.directives.Directive.extractDirectives
 import com.wavesplatform.lang.directives.values.{DApp => DAppType, _}
@@ -209,4 +208,13 @@ object JsAPI {
 
   @JSExportTopLevel("nodeVersion")
   def nodeVersion(): js.Dynamic = js.Dynamic.literal("version" -> Version.VersionString)
+
+  @JSExportTopLevel("repl")
+  def repl(expr: String): js.Dynamic = {
+    Repl.execute(expr)
+      .fold(
+        e => js.Dynamic.literal("error" -> e),
+        r => js.Dynamic.literal("result" -> r)
+      )
+  }
 }

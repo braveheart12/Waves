@@ -19,10 +19,8 @@ object EvaluatorV1 {
       ctx <- get[LoggedEvaluationContext, ExecutionError]
       blockEvaluation = evalExpr(let.value)
       lazyBlock       = LazyVal(blockEvaluation.ter(ctx), ctx.l(let.name))
-      result <- local {
-        modify[LoggedEvaluationContext, ExecutionError](lets.modify(_)(_.updated(let.name, lazyBlock)))
-          .flatMap(_ => evalExpr(inner))
-      }
+      _ <- modify[LoggedEvaluationContext, ExecutionError](lets.modify(_)(_.updated(let.name, lazyBlock)))
+      result <- evalExpr(inner)
     } yield result
 
   private def evalFuncBlock(func: FUNC, inner: EXPR): EvalM[EVALUATED] = {
@@ -30,10 +28,8 @@ object EvaluatorV1 {
     val function   = UserFunction(func.name, 0, null, s"user defined function '${func.name}'", func.args.map(n => (n, null, n)): _*)(func.body)
     for {
       ctx <- get[LoggedEvaluationContext, ExecutionError]
-      result <- local {
-        modify[LoggedEvaluationContext, ExecutionError](funcs.modify(_)(_.updated(funcHeader, function)))
-          .flatMap(_ => evalExpr(inner))
-      }
+      _ <- modify[LoggedEvaluationContext, ExecutionError](funcs.modify(_)(_.updated(funcHeader, function)))
+      result <- evalExpr(inner)
     } yield result
   }
 
@@ -132,6 +128,12 @@ fields.get(field) match {
     val r = c.flatMap(ap(_, expr, (str: String) => (v: LetExecResult) => log.append((str, v))))
     (log.toList, r)
   }
+
+  def applyWithContext(c: EvaluationContext, expr: EXPR): (EvaluationContext, Either[ExecutionError, EVALUATED]) =
+    evalExpr(expr)
+      .run(LoggedEvaluationContext(_ => _ => (), c))
+      .value
+      .leftMap(_.ec)
 
   def apply[A <: EVALUATED](c: EvaluationContext, expr: EXPR): Either[ExecutionError, A] = ap(c, expr, _ => _ => ())
 
