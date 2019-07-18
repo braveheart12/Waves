@@ -60,7 +60,7 @@ package object state {
   }
 
   // common logic for addressTransactions method of BlockchainUpdaterImpl and CompositeBlockchain
-  def addressTransactionsCompose(b: AddressTransactions, fromDiffIter: CloseableIterator[(Height, Transaction, Set[Address])])(
+  def addressTransactionsCompose(at: AddressTransactions, fromDiffIter: CloseableIterator[(Height, Transaction, Set[Address])])(
       address: Address,
       types: Set[TransactionParser],
       fromId: Option[ByteStr]): CloseableIterator[(Height, Transaction)] = {
@@ -78,7 +78,7 @@ package object state {
     CloseableIterator
       .seq(
         withFilterAndLimit(withPagination(fromDiffIter)).map(tup => (tup._1, tup._2)),
-        b.addressTransactions(address, types, fromId)
+        at.addressTransactionsIterator(address, types, fromId)
       )
   }
 
