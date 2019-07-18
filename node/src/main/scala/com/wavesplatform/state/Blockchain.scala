@@ -9,11 +9,8 @@ import com.wavesplatform.lang.script.Script
 import com.wavesplatform.settings.BlockchainSettings
 import com.wavesplatform.state.reader.LeaseDetails
 import com.wavesplatform.transaction.Asset.{IssuedAsset, Waves}
-import com.wavesplatform.transaction.assets.IssueTransaction
 import com.wavesplatform.transaction.lease.LeaseTransaction
 import com.wavesplatform.transaction.{Asset, Transaction}
-import com.wavesplatform.utils.CloseableIterator
-import monix.reactive.Observable
 
 trait Blockchain {
   def settings: BlockchainSettings
@@ -46,24 +43,8 @@ trait Blockchain {
   def activatedFeatures: Map[Short, Int]
   def featureVotes(height: Int): Map[Short, Int]
 
-  def portfolio(a: Address): Portfolio
-
   def transactionInfo(id: ByteStr): Option[(Int, Transaction)]
   def transactionHeight(id: ByteStr): Option[Int]
-
-  private[state] def nftIterator(address: Address, from: Option[IssuedAsset]): CloseableIterator[IssueTransaction] =
-    CloseableIterator.empty
-
-  final def nftObs(address: Address, from: Option[IssuedAsset]): Observable[IssueTransaction] =
-    Observable.defer {
-      val iterator = nftIterator(address, from)
-      Observable.fromIterator(iterator, () => iterator.close())
-    }
-
-  final def nftList(address: Address, from: Option[IssuedAsset], count: Int): Seq[IssueTransaction] =
-    nftIterator(address, from)
-      .take(count)
-      .closeAfter(_.toVector)
 
   def addressTransactions(address: Address,
                           types: Set[Transaction.Type],
@@ -96,13 +77,6 @@ trait Blockchain {
   def leaseBalance(address: Address): LeaseBalance
 
   def balance(address: Address, mayBeAssetId: Asset = Waves): Long
-
-  def assetDistribution(asset: IssuedAsset): AssetDistribution
-  def assetDistributionAtHeight(asset: IssuedAsset,
-                                height: Int,
-                                count: Int,
-                                fromAddress: Option[Address]): Either[ValidationError, AssetDistributionPage]
-  def wavesDistribution(height: Int): Either[ValidationError, Map[Address, Long]]
 
   // the following methods are used exclusively by patches
   def collectActiveLeases[T](pf: PartialFunction[LeaseTransaction, T]): Seq[T]
