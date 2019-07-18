@@ -63,7 +63,7 @@ class BlockchainUpdaterImpl(private val blockchain: LevelDBWriter,
   private val service               = Schedulers.singleThread("last-block-info-publisher")
   private val internalLastBlockInfo = ConcurrentSubject.publish[LastBlockInfo](service)
 
-  private[wavesplatform] def ngStateValue: Option[NgState] = ngState
+  def bestLiquidDiff: Option[Diff] = readLock(ngState.map(_.bestLiquidDiff))
 
   override val settings: BlockchainSettings = wavesSettings.blockchainSettings
 
@@ -689,8 +689,8 @@ object BlockchainUpdaterImpl extends ScorexLogging with AddressTransactions.Prov
       b1.timestamp == b2.timestamp
 
   def addressTransactions(bu: BlockchainUpdaterImpl): AddressTransactions =
-    new CompositeAddressTransactions(bu.blockchain, Height @@ bu.height, () => bu.readLock(bu.ngStateValue.map(_.bestLiquidDiff)))
+    new CompositeAddressTransactions(bu.blockchain, Height @@ bu.height, () => bu.bestLiquidDiff)
 
   def distributions(bu: BlockchainUpdaterImpl): Distributions =
-    new CompositeDistributions(bu, bu.blockchain, () => bu.readLock(bu.ngStateValue.map(_.bestLiquidDiff)))
+    new CompositeDistributions(bu, bu.blockchain, () => bu.bestLiquidDiff)
 }
