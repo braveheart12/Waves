@@ -209,9 +209,11 @@ object JsAPI {
   @JSExportTopLevel("nodeVersion")
   def nodeVersion(): js.Dynamic = js.Dynamic.literal("version" -> Version.VersionString)
 
+  val repl = Repl()
+
   @JSExportTopLevel("repl")
   def repl(expr: String): js.Dynamic = {
-    Repl.execute(expr)
+    repl.execute(expr)
       .fold(
         e => js.Dynamic.literal("error" -> e),
         r => js.Dynamic.literal("result" -> r)
