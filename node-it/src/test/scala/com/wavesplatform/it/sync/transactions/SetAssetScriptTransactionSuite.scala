@@ -96,7 +96,8 @@ class SetAssetScriptTransactionSuite extends BaseTransactionSuite {
             s"""
                                         |match tx {
                                         |case s : SetAssetScriptTransaction => s.sender == addressFromPublicKey(base58'${ByteStr(
-                 pkByAddress(secondAddress).publicKey).base58}')
+              pkByAddress(secondAddress).publicKey).toString
+            }')
                                         |case _ => false}""".stripMargin,
             isAssetScript = true
           ).explicitGet()._1.bytes.value.base64)
@@ -152,7 +153,7 @@ class SetAssetScriptTransactionSuite extends BaseTransactionSuite {
 
   test("cannot transact without having enough waves") {
     val (balance, eff) = miner.accountBalances(firstAddress)
-    assertBadRequestAndResponse(sender.setAssetScript(assetWScript, firstAddress, balance + 1, Some(scriptBase64)), "negative waves balance")
+    assertBadRequestAndResponse(sender.setAssetScript(assetWScript, firstAddress, balance + 1, Some(scriptBase64)), "Accounts balance errors")
     nodes.waitForHeightArise()
     miner.assertBalances(firstAddress, balance, eff)
 
@@ -186,7 +187,7 @@ class SetAssetScriptTransactionSuite extends BaseTransactionSuite {
 
     for ((tx, diag) <- invalidTxs) {
       assertBadRequestAndResponse(sender.broadcastRequest(tx.json()), diag)
-      nodes.foreach(_.ensureTxDoesntExist(tx.id().base58))
+      nodes.foreach(_.ensureTxDoesntExist(tx.id().toString))
     }
 
     nodes.waitForHeightArise()

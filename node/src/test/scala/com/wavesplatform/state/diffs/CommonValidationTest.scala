@@ -49,11 +49,11 @@ class CommonValidationTest extends PropSpec with PropertyChecks with Matchers wi
     forAll(gen) {
       case (genesisBlock, transferTx) =>
         withStateAndHistory(settings) { blockchain =>
-          val BlockDiffer.Result(preconditionDiff, preconditionFees, totalFee, _) =
+          val BlockDiffer.Result(preconditionDiff, preconditionFees, totalFee, _, _) =
             BlockDiffer.fromBlock(blockchain, None, genesisBlock, MiningConstraint.Unlimited).explicitGet()
           blockchain.append(preconditionDiff, preconditionFees, totalFee, genesisBlock)
 
-          f(CommonValidation.checkFee(blockchain, 1, transferTx))
+          f(CommonValidation.checkFee(blockchain, transferTx))
         }
     }
   }
@@ -72,11 +72,11 @@ class CommonValidationTest extends PropSpec with PropertyChecks with Matchers wi
     forAll(gen) {
       case (genesisBlock, transferTx) =>
         withStateAndHistory(settings) { blockchain =>
-          val BlockDiffer.Result(preconditionDiff, preconditionFees, totalFee, _) =
+          val BlockDiffer.Result(preconditionDiff, preconditionFees, totalFee, _, _) =
             BlockDiffer.fromBlock(blockchain, None, genesisBlock, MiningConstraint.Unlimited).explicitGet()
           blockchain.append(preconditionDiff, preconditionFees, totalFee, genesisBlock)
 
-          f(CommonValidation.checkFee(blockchain, 1, transferTx))
+          f(CommonValidation.checkFee(blockchain, transferTx))
         }
     }
   }
@@ -190,11 +190,11 @@ class CommonValidationTest extends PropSpec with PropertyChecks with Matchers wi
     forAll(gen) {
       case (genesisBlock, transferTx) =>
         withStateAndHistory(settings) { blockchain =>
-          val BlockDiffer.Result(preconditionDiff, preconditionFees, totalFee, _) =
+          val BlockDiffer.Result(preconditionDiff, preconditionFees, totalFee, _, _) =
             BlockDiffer.fromBlock(blockchain, None, genesisBlock, MiningConstraint.Unlimited).explicitGet()
           blockchain.append(preconditionDiff, preconditionFees, totalFee, genesisBlock)
 
-          f(CommonValidation.checkFee(blockchain, 1, transferTx))
+          f(CommonValidation.checkFee(blockchain, transferTx))
         }
     }
   }
