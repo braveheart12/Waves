@@ -317,6 +317,22 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
     eval[EVALUATED](script, Some(pointAInstance)) shouldBe evaluated(8)
   }
 
+  // !!!!
+  ignore("context won't change after inner let 2") {
+    val script =
+      """
+        |let a = { let x = 3; x > 1 }
+        |let b = { let x = 5; x > 3}
+        |if (a) then {
+        | let x = 3
+        | x
+        |} else {
+        | 2
+        |}
+      """.stripMargin
+    eval[EVALUATED](script, Some(pointAInstance)) shouldBe evaluated(8)
+  }
+
   property("contexts of different if parts do not affect each other") {
     val script = "if ({let x= 0; x > 0 }) then { let x = 3; x } else { let x = 5; x}"
     eval[EVALUATED](script, Some(pointAInstance)) shouldBe evaluated(5)
@@ -340,8 +356,7 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
     ev[CONST_LONG](context, expr) shouldBe evaluated(2003l)
   }
 
-  // unreachable case
-  ignore("context won't change after execution of an inner block") {
+  property("context won't change after execution of an inner block") {
     val context = Monoid.combine(
       PureContext.build(Global, V1).evaluationContext,
       EvaluationContext(

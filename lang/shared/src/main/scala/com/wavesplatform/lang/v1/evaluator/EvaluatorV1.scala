@@ -19,8 +19,10 @@ object EvaluatorV1 {
       ctx <- get[LoggedEvaluationContext, ExecutionError]
       blockEvaluation = evalExpr(let.value)
       lazyBlock       = LazyVal(blockEvaluation.ter(ctx), ctx.l(let.name))
-      _ <- modify[LoggedEvaluationContext, ExecutionError](lets.modify(_)(_.updated(let.name, lazyBlock)))
-      result <- evalExpr(inner)
+      result <- local {
+        modify[LoggedEvaluationContext, ExecutionError](lets.modify(_)(_.updated(let.name, lazyBlock)))
+          .flatMap(_ => evalExpr(inner))
+      }
     } yield result
 
   private def evalFuncBlock(func: FUNC, inner: EXPR): EvalM[EVALUATED] = {
@@ -28,8 +30,10 @@ object EvaluatorV1 {
     val function   = UserFunction(func.name, 0, null, s"user defined function '${func.name}'", func.args.map(n => (n, null, n)): _*)(func.body)
     for {
       ctx <- get[LoggedEvaluationContext, ExecutionError]
-      _ <- modify[LoggedEvaluationContext, ExecutionError](funcs.modify(_)(_.updated(funcHeader, function)))
-      result <- evalExpr(inner)
+      result <- local {
+        modify[LoggedEvaluationContext, ExecutionError](funcs.modify(_)(_.updated(funcHeader, function)))
+          .flatMap(_ => evalExpr(inner))
+      }
     } yield result
   }
 

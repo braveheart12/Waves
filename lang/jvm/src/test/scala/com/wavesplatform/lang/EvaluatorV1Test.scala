@@ -19,7 +19,7 @@ import com.wavesplatform.lang.v1.evaluator.ctx.impl.PureContext._
 import com.wavesplatform.lang.v1.evaluator.ctx.impl.converters._
 import com.wavesplatform.lang.v1.evaluator.ctx.impl.waves.WavesContext
 import com.wavesplatform.lang.v1.evaluator.ctx.impl.{CryptoContext, EnvironmentFunctions, PureContext, _}
-import com.wavesplatform.lang.v1.evaluator.{EvaluatorV1, Log}
+import com.wavesplatform.lang.v1.evaluator.{EvaluatorV1, FunctionIds, Log}
 import com.wavesplatform.lang.v1.testing.ScriptGen
 import com.wavesplatform.lang.v1.traits.Environment
 import com.wavesplatform.lang.v1.{CTX, FunctionHeader}
@@ -867,6 +867,28 @@ class EvaluatorV1Test extends PropSpec with PropertyChecks with Matchers with Sc
     ev[EVALUATED](context, expr) shouldBe evaluated(64L)
 
     functionEvaluated shouldBe 1
+  }
+
+  property("scope is not leaked in evaluator") {
+    val exp = BLOCK(
+      LET("a", BLOCK(
+        LET("x", CONST_LONG(1)),
+        REF("x")
+      )),
+      REF("x")
+    )
+
+    val exp1 = BLOCK(
+      LET("a", BLOCK(
+        LET("x", CONST_LONG(1)),
+        REF("x")
+      )),
+      FUNCTION_CALL(FunctionHeader.Native(FunctionIds.SUM_LONG), List(REF("a"),REF("x")))
+    )
+
+    ev[EVALUATED](pureContext.evaluationContext, exp) should produce("not found")
+    ev[EVALUATED](pureContext.evaluationContext, exp1) should produce("not found")
+
   }
 
   property("function parameters (REF) in body should be taken from the arguments, not from the outer context") {

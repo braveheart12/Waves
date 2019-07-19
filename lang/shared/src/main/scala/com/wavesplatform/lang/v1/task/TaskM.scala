@@ -37,6 +37,10 @@ trait TaskM[S, E, R] {
     }))
   }
 
+  def inspectFlat[B](f: S => TaskM[S, E, B]): TaskM[S, E, B] = {
+    TaskM[S, E, S](s => Eval.now(Right(s))).flatMap(f)
+  }
+
   def handleErrorWith(f: E => TaskM[S, E, R]): TaskM[S, E, R] = {
     TaskM.fromKleisli(inner.flatMap({
       case Right(v)  => Kleisli.pure(v.asRight)

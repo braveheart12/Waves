@@ -8,6 +8,9 @@ import shapeless.{Lens, lens}
 
 case class EvaluationContext(typeDefs: Map[String, FINAL], letDefs: Map[String, LazyVal], functions: Map[FunctionHeader, BaseFunction])
 
+case class MemorizedEvaluationContext(typeDefs: Map[String, FINAL], letDefs: Map[String, MemorizingLazyVal], functions: Map[FunctionHeader, BaseFunction])
+case class MemorizedLoggedEvaluationContext(l: LetLogCallback, ec: MemorizedEvaluationContext)
+
 case class LoggedEvaluationContext(l: LetLogCallback, ec: EvaluationContext)
 
 object LoggedEvaluationContext {
@@ -15,6 +18,10 @@ object LoggedEvaluationContext {
     val types: Lens[LoggedEvaluationContext, Map[String, FINAL]]          = lens[LoggedEvaluationContext] >> 'ec >> 'typeDefs
     val lets: Lens[LoggedEvaluationContext, Map[String, LazyVal]]               = lens[LoggedEvaluationContext] >> 'ec >> 'letDefs
     val funcs: Lens[LoggedEvaluationContext, Map[FunctionHeader, BaseFunction]] = lens[LoggedEvaluationContext] >> 'ec >> 'functions
+
+    val mtypes: Lens[MemorizedLoggedEvaluationContext, Map[String, FINAL]]                = lens[MemorizedLoggedEvaluationContext] >> 'ec >> 'typeDefs
+    val mlets: Lens[MemorizedLoggedEvaluationContext, Map[String, MemorizingLazyVal]]     = lens[MemorizedLoggedEvaluationContext] >> 'ec >> 'letDefs
+    val mfuncs: Lens[MemorizedLoggedEvaluationContext, Map[FunctionHeader, BaseFunction]] = lens[MemorizedLoggedEvaluationContext] >> 'ec >> 'functions
   }
 }
 
@@ -27,6 +34,13 @@ object EvaluationContext {
 
     override def combine(x: EvaluationContext, y: EvaluationContext): EvaluationContext =
       EvaluationContext(typeDefs = x.typeDefs ++ y.typeDefs, letDefs = x.letDefs ++ y.letDefs, functions = x.functions ++ y.functions)
+  }
+
+  implicit val MERmonoid: Monoid[MemorizedEvaluationContext] = new Monoid[MemorizedEvaluationContext] {
+    override val empty: MemorizedEvaluationContext = MemorizedEvaluationContext(Map(), Map(), Map())
+
+    override def combine(x: MemorizedEvaluationContext, y: MemorizedEvaluationContext): MemorizedEvaluationContext =
+      MemorizedEvaluationContext(typeDefs = x.typeDefs ++ y.typeDefs, letDefs = x.letDefs ++ y.letDefs, functions = x.functions ++ y.functions)
   }
 
   def build(typeDefs: Map[String, FINAL], letDefs: Map[String, LazyVal], functions: Seq[BaseFunction]): EvaluationContext = {
